@@ -32,14 +32,18 @@ non_car_features = []
 
 for file in car_examples:
     image = cv2.imread(file)
-    car_features.append(extract_features(image, spatial_colorspace = spatial_colorspace, spatial_size = spatial_size,
-                                    hist_bins = histogram_bins, hog_conversion = hog_conversion, channel = 1,
-                                    orient = orient, pix_per_cell = pix_per_cell, cell_per_block = cell_per_block))
+    car_features.append(extract_features(image, use_spatial = use_spatial, spatial_colorspace = spatial_colorspace,
+                                         spatial_size = spatial_size, color_channels = color_channels,
+                                         use_histogram = use_histogram, hist_bins = histogram_bins,
+                                         use_hog = use_hog, hog_conversion = hog_conversion, hog_channels = hog_channels,
+                                         orient = orient, pix_per_cell = pix_per_cell, cell_per_block = cell_per_block))
 for file in non_car_examples:
     image = cv2.imread(file)
-    non_car_features.append(extract_features(image, spatial_colorspace = spatial_colorspace, spatial_size = spatial_size,
-                                    hist_bins = histogram_bins, hog_conversion = hog_conversion, channel = 1,
-                                    orient = orient, pix_per_cell = pix_per_cell, cell_per_block = cell_per_block))
+    non_car_features.append(extract_features(image, use_spatial = use_spatial, spatial_colorspace = spatial_colorspace,
+                                         spatial_size = spatial_size, color_channels = color_channels,
+                                         use_histogram = use_histogram, hist_bins = histogram_bins,
+                                         use_hog = use_hog, hog_conversion = hog_conversion, hog_channels = hog_channels,
+                                         orient = orient, pix_per_cell = pix_per_cell, cell_per_block = cell_per_block))
 
 # put all examples together to be split later by train_test_split()
 X = np.vstack((car_features, non_car_features)).astype(np.float64)
@@ -50,8 +54,6 @@ scaled_X = X_scaler.transform(X)
 
 # labels vector
 y = np.hstack((np.ones(len(car_features)), np.zeros(len(non_car_features))))
-print(len(scaled_X))
-print(len(y))
 # divide selected data into training and test sets
 rand_state = np.random.randint(0, 100)
 X_train, X_test, y_train, y_test = train_test_split(scaled_X, y, test_size = 0.2, random_state = rand_state)

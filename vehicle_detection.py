@@ -1,5 +1,3 @@
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 from scipy.ndimage.measurements import label
@@ -14,66 +12,6 @@ X_scaler = joblib.load('./X_scaler.pkl')
 test_image_files = glob.glob('./test_images/*.jpg')
 selection = np.random.choice(test_image_files, 1 )[0]
 example = cv2.imread(selection)
-
-def single_img_features(img, color_space='BGR', spatial_size=(32, 32),
-                        hist_bins=32, orient=9, hog_color = 'HSV',
-                        pix_per_cell=8, cell_per_block=2, hog_channel=0,
-                        spatial_feat=True, hist_feat=True, hog_feat=True):
-    #1) Define an empty list to receive features
-    img_features = []
-    #2) Apply color conversion if other than 'BGR'
-    if color_space != 'BGR':
-        if color_space == 'HSV':
-            feature_image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        elif color_space == 'LUV':
-            feature_image = cv2.cvtColor(img, cv2.COLOR_BGR2LUV)
-        elif color_space == 'HLS':
-            feature_image = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
-        elif color_space == 'YUV':
-            feature_image = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
-        elif color_space == 'YCrCb':
-            feature_image = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
-        elif color_space == 'GRAY':
-            feature_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    else: feature_image = np.copy(img)
-    #3) Compute spatial features if flag is set
-    if spatial_feat == True:
-        spatial_features = bin_spatial(feature_image, size=spatial_size)
-        #4) Append features to list
-        img_features.append(spatial_features)
-    #5) Compute histogram features if flag is set
-    if hist_feat == True:
-        hist_features = color_hist(feature_image, nbins=hist_bins)
-        #6) Append features to list
-        img_features.append(hist_features)
-    #7) Compute HOG features if flag is set
-    if hog_feat == True:
-        if hog_color != 'BGR':
-            if hog_color == 'HSV':
-                hog_image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-            elif hog_color == 'LUV':
-                hog_image = cv2.cvtColor(img, cv2.COLOR_BGR2LUV)
-            elif hog_color == 'HLS':
-                hog_image = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
-            elif hog_color == 'YUV':
-                hog_image = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
-            elif hog_color == 'YCrCb':
-                hog_image = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
-            elif hog_color == 'GRAY':
-                hog_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        else:
-            hog_image = np.copy(img)
-        if hog_channel == 'ALL':
-            hog_features =  get_hog_features(hog_image, orient, pix_per_cell, cell_per_block,
-                                             vis=False, feature_vec=True)
-        else:
-            hog_features = get_hog_features(hog_image[:,:,hog_channel], orient,
-                        pix_per_cell, cell_per_block, vis=False, feature_vec=True)
-        #8) Append features to list
-        img_features.append(hog_features)
-
-    #9) Return concatenated array of features
-    return np.concatenate(img_features)
 
 
 # Define a function that takes an image,
@@ -146,10 +84,11 @@ def search_windows(img, windows, clf, scaler, color_space='RGB',
         #3) Extract the test window from original image
         test_img = cv2.resize(img[window[0][1]:window[1][1], window[0][0]:window[1][0]], (64, 64))
         #4) Extract features for that window using single_img_features()
-        features = extract_features(test_img, spatial_colorspace=spatial_colorspace,
-                            spatial_size=spatial_size, hist_bins=hist_bins,
-                            orient=orient, pix_per_cell=pix_per_cell,
-                            cell_per_block=cell_per_block)
+        features = extract_features(test_img, use_spatial = use_spatial, spatial_colorspace = spatial_colorspace,
+                                         spatial_size = spatial_size, color_channels = color_channels,
+                                         use_histogram = use_histogram, hist_bins = histogram_bins,
+                                         use_hog = use_hog, hog_conversion = hog_conversion, hog_channels = hog_channels,
+                                         orient = orient, pix_per_cell = pix_per_cell, cell_per_block = cell_per_block)
         #5) Scale extracted features to be fed to classifier
         test_features = scaler.transform((np.array(features)).reshape(1, -1))
         #6) Predict using your classifier
@@ -227,10 +166,33 @@ def find_cars(img, ystart, ystop, scale, svc, X_scaler, orient, pix_per_cell, ce
 
     return draw_img
 
-y_start_stop = [[400, 496], [464, 592], [496, 720]] # Min and max in y to search in slide_window()
-spatial_feat = True # Spatial features on or off
-hist_feat = True # Histogram features on or off
-hog_feat = True # HOG features on or off
+def add_heat(heatmap, bbox_list):
+    for box in bbox_list:
+        heatmap[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
+    return heatmap
+
+def apply_threshold(heatmap, threshold):
+    heatmap[heatmap <= threshold] = 0
+    return heatmap
+
+def draw_labeled_bboxes(img, labels):
+    # Iterate through all detected cars
+    for car_number in range(1, labels[1]+1):
+        # Find pixels with each car_number label value
+        nonzero = (labels[0] == car_number).nonzero()
+        # Identify x and y values of those pixels
+        nonzeroy = np.array(nonzero[0])
+        nonzerox = np.array(nonzero[1])
+        # Define a bounding box based on min/max x and y
+        bbox = ((np.min(nonzerox), np.min(nonzeroy)), (np.max(nonzerox), np.max(nonzeroy)))
+        # Draw the box on the image
+        cv2.rectangle(img, bbox[0], bbox[1], (0,255,0), 5)
+    # Return the image
+    return img
+
+y_start_stop = [[376, 600], [404, 660], [420, 660]] # Min and max in y to search in slide_window()
+x_start_stop = None
+xy_overlap = [(0, 0), (0.5, 0.5), (.80, .80)]
 hog_channel = 'ALL'
 small_window = (32, 32)
 medium_window = (64, 64)
@@ -241,45 +203,78 @@ draw_image = np.copy(example)
 
 for i in range(len(window_sizes)):
     windows.extend(slide_window(example, x_start_stop=[None, None], y_start_stop=y_start_stop[i],
-                    xy_window=window_sizes[i], xy_overlap=(0.5, 0.5)))
+                    xy_window=window_sizes[i], xy_overlap=xy_overlap[i]))
 print(len(windows))
 
-hot_windows = search_windows(example, windows, svc, X_scaler, color_space=spatial_colorspace,
-                        spatial_size=spatial_size, hist_bins=histogram_bins,
-                        orient=orient, pix_per_cell=pix_per_cell,
-                        cell_per_block=cell_per_block)
-print(len(hot_windows))
+produce_images = False
 
-window_img = draw_boxes(draw_image, hot_windows, color=(0, 0, 255), thick = 5)
+if produce_images:
+    hot_windows = search_windows(example, windows, svc, X_scaler, color_space=spatial_colorspace,
+                                 spatial_size=spatial_size, hist_bins=histogram_bins,
+                                 orient=orient, pix_per_cell=pix_per_cell,
+                                 cell_per_block=cell_per_block)
+    print(len(hot_windows))
 
-cv2.imshow('test', window_img)
-cv2.waitKey(0)
+    window_img = draw_boxes(draw_image, hot_windows, color=(0, 0, 255), thick = 5)
+
+    cv2.imshow('test', window_img)
+    cv2.waitKey(0)
+    file_i = 1
+
+
+    for file in test_image_files:
+        image = cv2.imread(file)
+        image_hot_windows = search_windows(image, windows, svc, X_scaler, color_space=spatial_colorspace,
+                                           spatial_size=spatial_size, hist_bins=histogram_bins,
+                                           orient=orient, pix_per_cell=pix_per_cell,
+                                           cell_per_block=cell_per_block)
+        boxes_image = draw_boxes(image, image_hot_windows, color = (0, 0, 255), thick = 5)
+        cv2.imwrite('./output_images/test' + str(file_i) + '.png', boxes_image)
+        print ('file', file_i, 'created')
+        file_i += 1
+
+
 
 from moviepy.editor import VideoFileClip
 
 class VideoProcessor(object):
-    def __init__(self, windows):
+    def __init__(self, windows, frames_to_keep, heatmap_threshold):
         self.prevoius_hots = []
-        self.frames_to_keep = 4
-        self.heatmap = []
+        self.frames_to_keep = frames_to_keep
+        self.hot_window_acc = []
         self.windows = windows
+        self.heatmap_threshold = heatmap_threshold
 
     def pipeline(self, frame):
         recolored = convert_color(frame, conv = 'RGB2BGR')
+        heatmap = np.zeros_like(frame)
         draw_image = np.copy(frame)
         frame_hot_windows = search_windows(recolored, self.windows, svc, X_scaler, color_space=spatial_colorspace,
                         spatial_size=spatial_size, hist_bins=histogram_bins,
                         orient=orient, pix_per_cell=pix_per_cell,
                         cell_per_block=cell_per_block)
-        window_img = draw_boxes(draw_image, frame_hot_windows, color = (0, 0, 255), thick = 5)
-        return window_img
+        if len(self.hot_window_acc) >= self.frames_to_keep:
+            self.hot_window_acc.pop(0)
+            self.hot_window_acc.append(frame_hot_windows)
+        else:
+            self.hot_window_acc.append(frame_hot_windows)
+        for window_sets in self.hot_window_acc:
+            add_heat(heatmap, window_sets)
+        thresholded_heatmap = apply_threshold(heatmap, self.heatmap_threshold)
+        labels = label(thresholded_heatmap)
+        print(labels[1], 'cars found')
+        if labels[1] != 0:
+            result = draw_labeled_bboxes(draw_image, labels)
+        else:
+            result = draw_image
+        return result
 
 
 project_video_output = './project_output.mp4'
-clip = VideoFileClip('./test_video.mp4')
+clip = VideoFileClip('./project_video.mp4')
 first_frame = clip.get_frame(0)
 
-my_video_processor = VideoProcessor(windows)
+my_video_processor = VideoProcessor(windows, frames_to_keep = 7, heatmap_threshold = 5)
 
 pv_clip = clip.fl_image(my_video_processor.pipeline)
 pv_clip.write_videofile(project_video_output, audio = False)
