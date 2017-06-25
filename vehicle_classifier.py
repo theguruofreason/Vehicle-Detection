@@ -4,10 +4,9 @@ from skimage.feature import hog
 from sklearn.model_selection import train_test_split
 from sklearn.svm import LinearSVC
 from sklearn.preprocessing import StandardScaler
+from sklearn.externals import joblib
 import glob
-import pickle
 import time
-
 
 
 def convert_color(img, conv='RGB2YCrCb'):
@@ -79,33 +78,35 @@ def color_hist(img, nbins=16):  # bins_range=(0, 256)
     # Return the individual histograms, bin_centers and feature vector
     return hist_features
 
-def extract_features(filename, spatial_colorspace='RGB', spatial_size=(32, 32),
+def extract_features(filenames, spatial_colorspace='RGB', spatial_size=(32, 32),
                      hist_bins=32, hog_conversion = 'BGR2HSV', channel = 0, orient = 9,
                      pix_per_cell = 8, cell_per_block = 2):
-    img = cv2.imread(filename)
-    if spatial_colorspace != 'BGR':
-        converted_img = convert_color(img, 'BGR2' + spatial_colorspace)
-        # Apply bin_spatial() to get spatial color features
-        spatial_features = bin_spatial(converted_img, size = spatial_size)
-        # Apply color_hist() also with a color space option now
-        hist_features = color_hist(converted_img, nbins = hist_bins)
-        hog_converted_img = convert_color(converted_img, conv = hog_conversion)
-        hog_features = get_hog_features(hog_converted_img, orient, pix_per_cell, cell_per_block,
-                                        vis=False, feature_vec=True)
-    else:
-        spatial_features = bin_spatial(img, size = spatial_size)
-        hist_features = color_hist(img, nbins = hist_bins)
-        # Apply get_hog_features()
-        hog_img = convert_color(img, conv = hog_conversion)
-        hog_features = get_hog_features(hog_img, orient, pix_per_cell, cell_per_block,
-                                        vis=False, feature_vec=True)
-    # Append the new feature vector to the features list
     features = []
     three_features = []
-    three_features.append(np.concatenate((spatial_features, hist_features, hog_features)))
-    features.append(np.concatenate((spatial_features, hist_features)))
+    for filename in filenames:
+        img = cv2.imread(filename)
+        if spatial_colorspace != 'BGR':
+            feature_img = convert_color(img, 'BGR2' + spatial_colorspace)
+            # Apply bin_spatial() to get spatial color features
+            spatial_features = bin_spatial(feature_img, size = spatial_size)
+            # Apply color_hist() also with a color space option now
+            hist_features = color_hist(feature_img, nbins = hist_bins)
+            hog_feature_img = convert_color(feature_img, conv = hog_conversion)
+            hog_features = get_hog_features(hog_feature_img, orient, pix_per_cell, cell_per_block,
+                                            vis=False, feature_vec=True)
+        else:
+            feature_img = np.copy(img)
+            spatial_features = bin_spatial(feature_img, size = spatial_size)
+            hist_features = color_hist(feature_img, nbins = hist_bins)
+            # Apply get_hog_features()
+            hog_feature_img = convert_color(feature_img, conv = hog_conversion)
+            hog_features = get_hog_features(hog_feature_img, orient, pix_per_cell, cell_per_block,
+                                            vis=False, feature_vec=True)
+        # Append the new feature vector to the features list
+        three_features.append(np.concatenate((spatial_features, hist_features, hog_features)))
+        features.append(np.concatenate((spatial_features, hist_features)))
     # Return list of feature vectors
-    return features
+    return three_features
 
 car_image_filenames = glob.glob('./vehicles/*/*.png')
 num_car_images = len(car_image_filenames)
@@ -113,48 +114,45 @@ non_car_image_filenames = glob.glob('./non-vehicles/*/*.png')
 num_non_car_images = len(non_car_image_filenames)
 print('# car images:', num_car_images, '\n# non-car images:', num_non_car_images)
 
-data_subset_size = 500 # number of car and non-car images to use
+'''
+# used for testing throughput
+data_subset_size = 5000 # number of car and non-car images to use
 
-# select random car and non-car examples
+# select random car and non-car examples for testing
 car_examples = np.random.choice(car_image_filenames, data_subset_size, replace = False)
 non_car_examples = np.random.choice(non_car_image_filenames, data_subset_size, replace = False)
+'''
 
-car_features = []
-non_car_features = []
+car_examples = car_image_filenames
+non_car_examples = non_car_image_filenames
 
 # set up parameters
 spatial_colorspace = 'BGR'
-spatial_size = (16, 16)
+spatial_size = (32, 32)
 histogram_bins = 16
 hog_conversion = 'BGR2GRAY'
-orient = 9
+orient = 12
 pix_per_cell = 8
 cell_per_block = 2
 
-# extract the features for x
-for file in car_examples:
-    car_features.append(extract_features(file, spatial_colorspace = spatial_colorspace, spatial_size = spatial_size,
+car_features = extract_features(car_examples, spatial_colorspace = spatial_colorspace, spatial_size = spatial_size,
                                     hist_bins = histogram_bins, hog_conversion = hog_conversion, channel = 1,
-                                    orient = orient, pix_per_cell = pix_per_cell, cell_per_block = cell_per_block))
+                                    orient = orient, pix_per_cell = pix_per_cell, cell_per_block = cell_per_block)
 
-for file in non_car_examples:
-    non_car_features.append(extract_features(file, spatial_colorspace = spatial_colorspace, spatial_size = spatial_size,
+non_car_features = extract_features(non_car_examples, spatial_colorspace = spatial_colorspace, spatial_size = spatial_size,
                                     hist_bins = histogram_bins, hog_conversion = hog_conversion, channel = 1,
-                                   orient = orient, pix_per_cell = pix_per_cell, cell_per_block = cell_per_block))
+                                    orient = orient, pix_per_cell = pix_per_cell, cell_per_block = cell_per_block)
 
 
 # put all examples together to be split later by train_test_split()
 X = np.vstack((car_features, non_car_features)).astype(np.float64)
-#print(car_features.shape)
-#print(non_car_features.shape)
-print(X.shape)
 # fit per-column scaler
 X_scaler = StandardScaler().fit(X)
 # apply scaler
 scaled_X = X_scaler.transform(X)
 
 # labels vector
-y = np.hstack((np.ones(data_subset_size), np.zeros(data_subset_size)))
+y = np.hstack((np.ones(len(car_features)), np.zeros(len(non_car_features))))
 print(len(scaled_X))
 print(len(y))
 # divide selected data into training and test sets
@@ -177,3 +175,5 @@ print('My SVC predicts: ', svc.predict(X_test[0:n_predict]))
 print('For these',n_predict, 'labels: ', y_test[0:n_predict])
 t2 = time.time()
 print(round(t2-t, 5), 'Seconds to predict', n_predict,'labels with SVC')
+
+joblib.dump(svc, 'vehicle_classifier.pkl')
