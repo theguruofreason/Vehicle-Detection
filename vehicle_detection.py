@@ -164,7 +164,6 @@ def search_windows(img, windows, clf, scaler, color_space='RGB',
 # Define a single function that can extract features using hog sub-sampling and make predictions
 def find_cars(img, ystart, ystop, scale, svc, X_scaler, orient, pix_per_cell, cell_per_block, spatial_size, hist_bins):
     draw_img = np.copy(img)
-    img = img.astype(np.float32) / 255
 
     img_tosearch = img[ystart:ystop, :, :]
     ctrans_tosearch = img_tosearch
@@ -251,7 +250,36 @@ hot_windows = search_windows(example, windows, svc, X_scaler, color_space=spatia
                         cell_per_block=cell_per_block)
 print(len(hot_windows))
 
-window_img = draw_boxes(draw_image, hot_windows, color=(0, 0, 255), thick=6)
+window_img = draw_boxes(draw_image, hot_windows, color=(0, 0, 255), thick = 5)
 
 cv2.imshow('test', window_img)
 cv2.waitKey(0)
+
+from moviepy.editor import VideoFileClip
+
+class VideoProcessor(object):
+    def __init__(self, windows):
+        self.prevoius_hots = []
+        self.frames_to_keep = 4
+        self.heatmap = []
+        self.windows = windows
+
+    def pipeline(self, frame):
+        recolored = convert_color(frame, conv = 'RGB2BGR')
+        draw_image = np.copy(frame)
+        frame_hot_windows = search_windows(recolored, self.windows, svc, X_scaler, color_space=spatial_colorspace,
+                        spatial_size=spatial_size, hist_bins=histogram_bins,
+                        orient=orient, pix_per_cell=pix_per_cell,
+                        cell_per_block=cell_per_block)
+        window_img = draw_boxes(draw_image, frame_hot_windows, color = (0, 0, 255), thick = 5)
+        return window_img
+
+
+project_video_output = './project_output.mp4'
+clip = VideoFileClip('./test_video.mp4')
+first_frame = clip.get_frame(0)
+
+my_video_processor = VideoProcessor(windows)
+
+pv_clip = clip.fl_image(my_video_processor.pipeline)
+pv_clip.write_videofile(project_video_output, audio = False)

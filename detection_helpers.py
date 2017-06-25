@@ -11,6 +11,8 @@ def convert_color(img, conv='RGB2YCrCb'):
         return cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     if conv == 'BGR2RGB':
         return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    if conv == 'RGB2BGR':
+        return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     if conv == 'RGB2YCrCb':
         return cv2.cvtColor(img, cv2.COLOR_RGB2YCrCb)
     if conv == 'RGB2LUV':
@@ -92,7 +94,7 @@ def extract_features(img, spatial_colorspace='RGB', spatial_size=(32, 32),
 # set up parameters
 spatial_colorspace = 'BGR'
 spatial_size = (32, 32)
-histogram_bins = 16
+histogram_bins = 12
 hog_conversion = 'BGR2HSV'
 orient = 12
 pix_per_cell = 8
