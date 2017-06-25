@@ -96,10 +96,10 @@ def extract_features(img, use_spatial = True, spatial_colorspace='BGR', spatial_
     return features
 
 # set up parameters
-use_spatial = False
+use_spatial = True
 spatial_colorspace = 'HSV'
 spatial_size = (32, 32)
-color_channels = [0,1,2]
+color_channels = [1,2]
 use_histogram = True
 histogram_bins = 12
 use_hog = True
