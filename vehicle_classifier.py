@@ -168,4 +168,5 @@ print('For these',n_predict, 'labels: ', y_test[0:n_predict])
 t2 = time.time()
 print(round(t2-t, 5), 'Seconds to predict', n_predict,'labels with SVC')
 
-joblib.dump(svc, 'vehicle_classifier.pkl')
+joblib.dump(svc, './vehicle_classifier.pkl')
+joblib.dump(X_scaler, './X_scaler.pkl')
