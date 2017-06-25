@@ -190,14 +190,14 @@ def draw_labeled_bboxes(img, labels):
     # Return the image
     return img
 
-y_start_stop = [[376, 600], [404, 660], [420, 660]] # Min and max in y to search in slide_window()
+y_start_stop = [[380, 620], [380, 660]] # Min and max in y to search in slide_window()
 x_start_stop = None
-xy_overlap = [(0, 0), (0.5, 0.5), (.80, .80)]
+xy_overlap = [(0.5, 0.5), (.80, .80)]
 hog_channel = 'ALL'
 small_window = (32, 32)
 medium_window = (64, 64)
 large_window = (96, 96)
-window_sizes = [small_window, medium_window, large_window]
+window_sizes = [medium_window, large_window]
 windows = []
 draw_image = np.copy(example)
 
@@ -206,7 +206,7 @@ for i in range(len(window_sizes)):
                     xy_window=window_sizes[i], xy_overlap=xy_overlap[i]))
 print(len(windows))
 
-produce_images = False
+produce_images = True
 
 if produce_images:
     hot_windows = search_windows(example, windows, svc, X_scaler, color_space=spatial_colorspace,
@@ -274,7 +274,7 @@ project_video_output = './project_output.mp4'
 clip = VideoFileClip('./project_video.mp4')
 first_frame = clip.get_frame(0)
 
-my_video_processor = VideoProcessor(windows, frames_to_keep = 7, heatmap_threshold = 5)
+my_video_processor = VideoProcessor(windows, frames_to_keep = 6, heatmap_threshold = 4)
 
 pv_clip = clip.fl_image(my_video_processor.pipeline)
 pv_clip.write_videofile(project_video_output, audio = False)
