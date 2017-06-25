@@ -63,32 +63,29 @@ def color_hist(img, nbins=16):  # bins_range=(0, 256)
     # Return the individual histograms, bin_centers and feature vector
     return hist_features
 
-def extract_features(filenames, spatial_colorspace='RGB', spatial_size=(32, 32),
+def extract_features(img, spatial_colorspace='RGB', spatial_size=(32, 32),
                      hist_bins=32, hog_conversion = 'BGR2HSV', channel = 0, orient = 9,
                      pix_per_cell = 8, cell_per_block = 2):
     features = []
-    three_features = []
-    for filename in filenames:
-        img = cv2.imread(filename)
-        if spatial_colorspace != 'BGR':
-            feature_img = convert_color(img, 'BGR2' + spatial_colorspace)
-            # Apply bin_spatial() to get spatial color features
-            spatial_features = bin_spatial(feature_img, size = spatial_size)
-            # Apply color_hist() also with a color space option now
-            hist_features = color_hist(feature_img, nbins = hist_bins)
-            hog_feature_img = convert_color(feature_img, conv = hog_conversion)
-            hog_features = get_hog_features(hog_feature_img, orient, pix_per_cell, cell_per_block,
-                                            vis=False, feature_vec=True)
-        else:
-            feature_img = np.copy(img)
-            spatial_features = bin_spatial(feature_img, size = spatial_size)
-            hist_features = color_hist(feature_img, nbins = hist_bins)
-            # Apply get_hog_features()
-            hog_feature_img = convert_color(feature_img, conv = hog_conversion)
-            hog_features = get_hog_features(hog_feature_img, orient, pix_per_cell, cell_per_block,
-                                            vis=False, feature_vec=True)
+    if spatial_colorspace != 'BGR':
+        feature_img = convert_color(img, 'BGR2' + spatial_colorspace)
+        # Apply bin_spatial() to get spatial color features
+        spatial_features = bin_spatial(feature_img, size = spatial_size)
+        # Apply color_hist() also with a color space option now
+        hist_features = color_hist(feature_img, nbins = hist_bins)
+        hog_feature_img = convert_color(feature_img, conv = hog_conversion)
+        hog_features = get_hog_features(hog_feature_img, orient, pix_per_cell, cell_per_block,
+                                        vis=False, feature_vec=True)
+    else:
+        feature_img = np.copy(img)
+        spatial_features = bin_spatial(feature_img, size = spatial_size)
+        hist_features = color_hist(feature_img, nbins = hist_bins)
+        # Apply get_hog_features()
+        hog_feature_img = convert_color(feature_img, conv = hog_conversion)
+        hog_features = get_hog_features(hog_feature_img, orient, pix_per_cell, cell_per_block,
+                                        vis=False, feature_vec=True)
         # Append the new feature vector to the features list
-        features.append(np.concatenate((spatial_features, hist_features, hog_features)))
+        features = np.concatenate((spatial_features, hist_features, hog_features))
     # Return list of feature vectors
     return features
 

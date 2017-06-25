@@ -27,16 +27,19 @@ non_car_examples = np.random.choice(non_car_image_filenames, data_subset_size, r
 
 car_examples = car_image_filenames
 non_car_examples = non_car_image_filenames
+car_features = []
+non_car_features = []
 
-
-car_features = extract_features(car_examples, spatial_colorspace = spatial_colorspace, spatial_size = spatial_size,
+for file in car_examples:
+    image = cv2.imread(file)
+    car_features.append(extract_features(image, spatial_colorspace = spatial_colorspace, spatial_size = spatial_size,
                                     hist_bins = histogram_bins, hog_conversion = hog_conversion, channel = 1,
-                                    orient = orient, pix_per_cell = pix_per_cell, cell_per_block = cell_per_block)
-
-non_car_features = extract_features(non_car_examples, spatial_colorspace = spatial_colorspace, spatial_size = spatial_size,
+                                    orient = orient, pix_per_cell = pix_per_cell, cell_per_block = cell_per_block))
+for file in non_car_examples:
+    image = cv2.imread(file)
+    non_car_features.append(extract_features(image, spatial_colorspace = spatial_colorspace, spatial_size = spatial_size,
                                     hist_bins = histogram_bins, hog_conversion = hog_conversion, channel = 1,
-                                    orient = orient, pix_per_cell = pix_per_cell, cell_per_block = cell_per_block)
-
+                                    orient = orient, pix_per_cell = pix_per_cell, cell_per_block = cell_per_block))
 
 # put all examples together to be split later by train_test_split()
 X = np.vstack((car_features, non_car_features)).astype(np.float64)
